@@ -1,0 +1,35 @@
+[
+  {
+    "date": "2026-04-21",
+    "template_id": "upper_ankle",
+    "exercises": [],
+    "completion_ratio": 1.0,
+    "daily_score": 4,
+    "was_override": false,
+    "overridden_from": null,
+    "override_reason": null,
+    "schema_version": 2
+  },
+  {
+    "date": "2026-04-22",
+    "template_id": "stretch_ankle",
+    "exercises": [],
+    "completion_ratio": 0.67,
+    "daily_score": 3,
+    "was_override": false,
+    "overridden_from": null,
+    "override_reason": null,
+    "schema_version": 2
+  },
+  {
+    "date": "2026-04-23",
+    "template_id": "travel_minimal",
+    "exercises": [],
+    "completion_ratio": 1.0,
+    "daily_score": 5,
+    "was_override": true,
+    "overridden_from": "lower_ankle",
+    "override_reason": "旅行",
+    "schema_version": 2
+  }
+]
