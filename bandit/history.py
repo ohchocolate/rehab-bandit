@@ -31,7 +31,8 @@ class History:
 
 def load_from_file(path: Path) -> History:
     data = json.loads(Path(path).read_text())
-    for r in data:
+    records = [r for r in data if "schema_version" in r]
+    for r in records:
         validate_checkin(r)
-    records = sorted(data, key=lambda r: r["date"])
+    records = sorted(records, key=lambda r: r["date"])
     return History(records=records)
