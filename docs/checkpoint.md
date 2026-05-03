@@ -14,3 +14,4 @@ One line per session. Append to bottom.
 2026-04-29 09:15 | Task 5 done | commit a973c04 | next: Task 6
 2026-04-29 10:00 | Task 6 done | commit 1f9595a | next: Task 7 (manual: write first real check-in by hand)
 2026-04-29 12:01 | Task 10 done | commit 14f7a53 | next: Task 11
+2026-05-02 14:30 | Task 10.5 done | commit 6ce6543 | next: Task 11 (rehab adapter + DEC-001 landed)
