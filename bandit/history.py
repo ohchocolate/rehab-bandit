@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from bandit.rehab_adapter import adapt
 from bandit.schema import validate_checkin
 
 
@@ -30,9 +31,28 @@ class History:
 
 
 def load_from_file(path: Path) -> History:
+    """Load a JSON array of bandit-internal v2 records (e.g. data/sample_checkins.json)."""
     data = json.loads(Path(path).read_text())
-    records = [r for r in data if "schema_version" in r]
-    for r in records:
+    for r in data:
         validate_checkin(r)
-    records = sorted(records, key=lambda r: r["date"])
+    records = sorted(data, key=lambda r: r["date"])
+    return History(records=records)
+
+
+def load_from_rehab_dir(path: Path) -> History:
+    """Load all rehab frontend session files from a directory, adapt to v2.
+
+    Reads every `*.json` in `path`, runs each through `rehab_adapter.adapt`.
+    Records the adapter rejects (missing schemaVersion / feedback_score /
+    template_id) are silently dropped — see DEC-001.
+    """
+    records = []
+    for fp in sorted(Path(path).glob("*.json")):
+        raw = json.loads(fp.read_text())
+        adapted = adapt(raw)
+        if adapted is None:
+            continue
+        validate_checkin(adapted)
+        records.append(adapted)
+    records.sort(key=lambda r: r["date"])
     return History(records=records)
