@@ -15,3 +15,5 @@ One line per session. Append to bottom.
 2026-04-29 10:00 | Task 6 done | commit 1f9595a | next: Task 7 (manual: write first real check-in by hand)
 2026-04-29 12:01 | Task 10 done | commit 14f7a53 | next: Task 11
 2026-05-02 14:30 | Task 10.5 done | commit 6ce6543 | next: Task 11 (rehab adapter + DEC-001 landed)
+2026-05-03 11:00 | Task 11 partial | commit 4748613 | helpers landed
+2026-05-03 11:00 | Task 11 paused | reason: hard gate on build_context_vector | next: author implements feature vector assembly + dim test
