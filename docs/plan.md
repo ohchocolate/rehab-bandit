@@ -972,11 +972,25 @@ YYYY-MM-DD HH:MM | Task 11 paused | reason: hard gate on build_context_vector | 
 
 **Author task**: design and implement `build_context_vector(ctx_dict) -> np.ndarray` in `bandit/context.py`. Decisions to make:
 - Normalize `days_since_*` (divide by 30? cap at 14?)
-- Encode weekday as one-hot (7 dims) or scalar (1 dim)?
 - Scale `yesterday_score` from 1-5 to 0-1?
 - Include bias term (constant 1)?
 
-Write a test `test_build_context_vector_dimensions()` that asserts the output dimension `d` (e.g., `assert vec.shape == (d,)`). Keep `d` consistent — Task 12 depends on it.
+**2026-05-09 amendment (DEC-003)**: initial v1 context vector should be small and explainable. Keep `weekday` in `build_context_dict()` for future use, but do **not** include it in `build_context_vector()` yet.
+
+Suggested initial vector shape: `(8,)`
+
+| Index | Feature | Suggested scaling |
+|---:|---|---|
+| 0 | bias term | `1.0` |
+| 1 | `travel_mode` | `1.0` if true else `0.0` |
+| 2 | `yesterday_score` | `(score - 1) / 4`, or `0.5` if missing |
+| 3 | `days_since_upper_ankle` | cap at 14, divide by 14 |
+| 4 | `days_since_lower_ankle` | cap at 14, divide by 14 |
+| 5 | `days_since_stretch_ankle` | cap at 14, divide by 14 |
+| 6 | `week_checkin_count` | cap at 7, divide by 7 |
+| 7 | `last_same_arm_completion` | already 0-1 |
+
+Write a test `test_build_context_vector_dimensions()` that asserts `vec.shape == (8,)`. Keep `d` consistent — Task 12 depends on it.
 
 - [ ] **Step 6: Author commits**
 
@@ -987,15 +1001,23 @@ git commit -m "feat(context): feature vector assembly"
 
 ---
 
-### Task 12: LinUCB core algorithm
+### Task 12: LinUCB core algorithm — stepped implementation
 
 **Files:**
 - Create: `bandit/linucb.py` ⚠️ **🚨 HARD GATE — author writes `select_arm` and `update`**
 - Test: `tests/test_linucb.py`
 
-> **Agent**: Do NOT write `select_arm` or `update` implementations. Write the test file and the class skeleton only. Author fills in the two methods.
+> **Agent**: Do NOT write runnable implementations for the math functions in this section. Write tests, class skeletons, docstrings, and pseudocode only. The author fills in the numpy math.
 
-- [ ] **Step 1: Agent writes test `tests/test_linucb.py`** (agent can write tests)
+**2026-05-09 amendment (DEC-003)**: split LinUCB into five author-owned microtasks. Each step should be small enough for the author to explain why every line exists.
+
+#### Task 12.0: LinUCB skeleton
+
+**Files:**
+- Create: `bandit/linucb.py`
+- Test: `tests/test_linucb.py`
+
+- [ ] **Step 1: Agent writes test skeleton `tests/test_linucb.py`** (agent can write tests)
 
 ```python
 import numpy as np
@@ -1080,9 +1102,149 @@ pytest tests/test_linucb.py -v
 
 Expected: FAIL — `NotImplementedError`. This confirms the skeleton exists.
 
-- [ ] **Step 5: 🚨 HARD GATE — Author implements `select_arm` and `update`**
+Commit skeleton:
 
-**Agent: STOP. Write `docs/checkpoint.md`:**
+```bash
+git add bandit/linucb.py tests/test_linucb.py
+git commit -m "test(linucb): scaffold stepped LinUCB hard gate"
+```
+
+#### Task 12.1: `compute_theta(A, b)`
+
+**Hard Gate**: author writes implementation.
+
+Purpose: solve the per-arm linear reward model. In plain language: `theta` is the vector of learned feature weights for one arm.
+
+Formula:
+
+```python
+theta = inv(A) @ b
+```
+
+Expected author explanation:
+
+> A theta = b is the ridge/least-squares normal-equation form for one arm, so theta = A^-1 b.
+
+Agent may write tests that check:
+- with `A = I`, `theta == b`
+- returned shape is `(d,)`
+
+Commit:
+
+```bash
+git add bandit/linucb.py tests/test_linucb.py
+git commit -m "feat(linucb): compute theta weights (self-written)"
+```
+
+#### Task 12.2: `predict_mean(theta, x)`
+
+**Hard Gate**: author writes implementation.
+
+Purpose: predict expected reward from context using the learned linear model.
+
+Formula:
+
+```python
+mean = theta @ x
+```
+
+Expected author explanation:
+
+> Linear prediction is a dot product: each feature contributes weight_i * x_i.
+
+Agent may write tests that check a simple dot-product example.
+
+Commit:
+
+```bash
+git add bandit/linucb.py tests/test_linucb.py
+git commit -m "feat(linucb): predict mean reward (self-written)"
+```
+
+#### Task 12.3: `compute_bonus(A, x, alpha)`
+
+**Hard Gate**: author writes implementation.
+
+Purpose: compute uncertainty for this arm/context pair.
+
+Formula:
+
+```python
+bonus = alpha * sqrt(x.T @ inv(A) @ x)
+```
+
+Expected author explanation:
+
+> The bonus is larger when the model is less certain for this context. Alpha controls exploration strength.
+
+Agent may write tests that check:
+- bonus is non-negative
+- higher `alpha` increases bonus
+- with `A = I`, bonus equals `alpha * ||x||`
+
+Commit:
+
+```bash
+git add bandit/linucb.py tests/test_linucb.py
+git commit -m "feat(linucb): compute uncertainty bonus (self-written)"
+```
+
+#### Task 12.4: `select_arm(context_vec)`
+
+**Hard Gate**: author writes implementation.
+
+Purpose: compute `mean + bonus` for each arm and return the max.
+
+Expected author explanation:
+
+> LinUCB picks the arm with the highest optimistic reward estimate: predicted mean plus uncertainty bonus.
+
+Agent may write tests using deterministic synthetic state.
+
+Commit:
+
+```bash
+git add bandit/linucb.py tests/test_linucb.py
+git commit -m "feat(linucb): select arm by UCB score (self-written)"
+```
+
+#### Task 12.5: `update(arm, x, reward)`
+
+**Hard Gate**: author writes implementation.
+
+Purpose: update the selected arm after observing reward.
+
+Formula:
+
+```python
+A[arm] += outer(x, x)
+b[arm] += reward * x
+```
+
+Expected author explanation:
+
+> The arm gets more evidence for this context. A tracks feature covariance; b tracks reward-weighted features.
+
+Agent may write tests that check `A` and `b` change for only the selected arm.
+
+Commit:
+
+```bash
+git add bandit/linucb.py tests/test_linucb.py
+git commit -m "feat(linucb): update selected arm state (self-written)"
+```
+
+- [ ] **Final Task 12 validation**
+
+```bash
+pytest tests/test_linucb.py -v
+```
+
+Expected: all LinUCB tests pass, including synthetic convergence.
+
+- [ ] **Checkpoint**
+
+When skeleton/tests are ready and before author implementation:
 ```
 YYYY-MM-DD HH:MM | Task 12 paused | reason: hard gate — author must implement LinUCB select_arm / update
 ```
@@ -1091,21 +1253,9 @@ YYYY-MM-DD HH:MM | Task 12 paused | reason: hard gate — author must implement 
 - Li et al. 2010 "A Contextual-Bandit Approach to Personalized News Article Recommendation" §3.1 (the LinUCB algorithm box)
 - Optional: https://banditalgs.com/2016/09/18/the-upper-confidence-bound-algorithm/
 
-**Author writes** `select_arm` and `update` method bodies. Reference pseudo-code in `docs/spec.md` §3.1.
-
-- [ ] **Step 6: Author runs test**
-
-```bash
-pytest tests/test_linucb.py -v
+After author completes all five microtasks, append:
 ```
-
-Expected: 3 PASSED (the convergence test proves it learns).
-
-- [ ] **Step 7: Author commits**
-
-```bash
-git add bandit/linucb.py tests/test_linucb.py
-git commit -m "feat(linucb): contextual bandit core (self-written)"
+YYYY-MM-DD HH:MM | Task 12 done | commit <sha> | next: Task 13
 ```
 
 ---

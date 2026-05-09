@@ -4,6 +4,32 @@ ADR-style records of non-obvious architectural decisions. Newest first. Each ent
 
 ---
 
+## DEC-003 — Keep arms stable; reduce initial context vector
+
+**Date**: 2026-05-09
+**Status**: accepted
+
+**Problem**: The 2026-05-09 return-to-training session suggests the user's body state is shifting from ankle-primary rehab toward shoulder rehab and broader strength return. This raises a real question about whether the original six arms are still the right taxonomy. At the same time, the project is currently paused at the Task 11 hard gate (`build_context_vector`), before any LinUCB model has run.
+
+**Decision**: do not rename or replace the six arms yet. First get a minimal LinUCB path working with the existing arms. Reduce the initial context vector by excluding `weekday` from `build_context_vector()`, while leaving `weekday` available in `build_context_dict()` for future use.
+
+**Why**: changing arms before the first working model would move the learning target again and increase the chance of another design loop. Removing `weekday` lowers dimensionality and removes one encoding decision. If a weekday pattern appears after 3+ weeks of data, it can be added back.
+
+---
+
+## DEC-002 — Treat return-test and transition sessions as out-of-distribution
+
+**Date**: 2026-05-09
+**Status**: accepted
+
+**Problem**: Some real sessions, including the 2026-05-09 return-to-training / power-test session, do not fit the six normal daily rehab arms. Forcing these records into bandit training would create noisy samples: the session is valuable body history, but not evidence that one of the normal arms succeeded or failed.
+
+**Decision**: add the concept of optional `session_type` labels. If a future frontend record has a `session_type` beginning with `ood_` (for example `ood_power_test`, `ood_shoulder_pt`, `ood_agility`), the bandit adapter/training path should skip it. The record should remain in the frontend history for retrospective analysis.
+
+**Migration trigger**: if one OOD category reaches 5+ records and persists for 2+ weeks, review whether the six-arm taxonomy or schema should change. Until then, collect the data without teaching LinUCB from it.
+
+---
+
 ## DEC-001 — rehab data ingested via adapter, not direct schema match
 
 **Date**: 2026-05-02
