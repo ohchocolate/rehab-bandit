@@ -1,5 +1,6 @@
 from bandit.context import (
     build_context_dict,
+    build_context_vector,
     days_since_arm,
     last_same_arm_completion,
     weekday_one_hot,
@@ -78,3 +79,31 @@ def test_build_context_dict_weekday_matches_calendar():
     # 2026-04-28 is a Tuesday → weekday() == 1 (Mon=0)
     ctx = build_context_dict(_hist(), today="2026-04-28", travel_mode=False)
     assert ctx["weekday"] == 1
+
+def test_build_context_vector_dimensions():
+    ctx = {
+        "travel_mode": True,
+        "yesterday_score": 4,
+        "days_since_upper_ankle": 7,
+        "days_since_lower_ankle": 999,
+        "days_since_stretch_ankle": 0,
+        "week_checkin_count": 3,
+        "weekday": 1,
+        "last_same_arm_completion": 0.6,
+    }
+    vec = build_context_vector(ctx)
+    assert vec.shape == (8,)
+
+def test_build_context_vector_scales_values():
+    ctx = {
+        "travel_mode": True,
+        "yesterday_score": 5,
+        "days_since_upper_ankle": 14,
+        "days_since_lower_ankle": 999,
+        "days_since_stretch_ankle": 0,
+        "week_checkin_count": 7,
+        "weekday": 1,
+        "last_same_arm_completion": 0.5,
+    }
+    vec = build_context_vector(ctx)
+    assert vec.tolist() == [1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.5]

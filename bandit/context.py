@@ -9,7 +9,7 @@ See docs/plan.md Task 11 Step 5 and CLAUDE.md Hard Gate rules.
 from datetime import date
 
 from bandit.history import History
-
+import numpy as np
 
 def days_since_arm(history: History, arm_id: str, today: str) -> int:
     last = history.last_of_arm(arm_id)
@@ -43,3 +43,35 @@ def build_context_dict(history: History, today: str, travel_mode: bool) -> dict:
         "weekday": today_d.weekday(),
         "last_same_arm_completion": last_same_arm_completion(history, "upper_ankle"),
     }
+
+def build_context_vector(ctx_dict) -> np.ndarray(shape=(8,)):
+    score =ctx_dict["yesterday_score"]
+    if score is None:
+        normalized_score = 0.5
+    else:
+        normalized_score = (score - 1) / 4
+
+    def scale_days(days):
+        # days coule be 999
+        # cap to 14 and then to 0-1
+        return min(days, 14)/14
+    
+    # [1.0,
+    #  travel_mode,
+    #  nomalized_score,
+    #  capped_days_upper,
+    #  capped_days_lower,
+    #  capped_days_stretch,
+    #  scaled_week_count,
+    #  last_same_arm_completion]
+    return np.array([
+        1.0,
+        1.0 if ctx_dict["travel_mode"] else 0.0,
+        normalized_score,
+        scale_days(ctx_dict["days_since_upper_ankle"]),
+        scale_days(ctx_dict["days_since_lower_ankle"]),
+        scale_days(ctx_dict["days_since_stretch_ankle"]),
+        min(ctx_dict["week_checkin_count"], 7) / 7,
+        ctx_dict["last_same_arm_completion"],
+    ], dtype=float)
+    
